@@ -29,6 +29,7 @@ This also addresses several issues with the default RnnLM where G2P is concerned
 
 USAGE:
 ================
+```
 $ cd src/
 $ make
 $ cd ..
@@ -42,7 +43,7 @@ ABBREVIATION  AH B R IY V IY EY SH AH N </s>	12.2586
 ABDOLLAH      AE B D AA L AH </s>  16.4175
 ABDUCTEES     AE B D AH K T IY Z </s>	13.7622
 ...
-
+```
 EXAMPLE MODELS:
 ================
 A 'reasonable' example model for the CMUdict can be downloaded here:
