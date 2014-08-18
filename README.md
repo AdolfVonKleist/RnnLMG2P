@@ -26,14 +26,17 @@ This will be folded back into Phonetisaurus after I make a bit more progress.
 This also addresses several issues with the default RnnLM where G2P is concerned:
   * Shuffling of training data
   * BPTT issues related to -independent option
+  * Model compression.  The neurons and much of the direct-connections synapse 
+     table can probably be compressed a good deal.  These are mostly empty.
 
 USAGE:
 ================
 ```
 $ cd src/
-$ make
+$ make && make install
 $ cd ..
-$ ./rnnlm-g2p g014b2b.rnnlm test.words script/spaced.100.wlist | ./script/prettify.pl
+$ ./phonetisaurus-g2prnn --rnnlm=g014b2b.rnnlm --test=script/spaced.100.wlist \
+  --beam=6 --nbest=1 | ./script/prettify.pl
 ABANDONED     AH B AE N D AH N D </s>	   17.2936
 ABBATIELLO    AA B AA T IY EH L OW </s>	   18.0768
 ABBENHAUS     AE B AH N HH AW S </s>	   21.0564
@@ -44,6 +47,7 @@ ABDOLLAH      AE B D AA L AH </s>  16.4175
 ABDUCTEES     AE B D AH K T IY Z </s>	13.7622
 ...
 ```
+
 EXAMPLE MODELS:
 ================
 A 'reasonable' example model for the CMUdict can be downloaded here:

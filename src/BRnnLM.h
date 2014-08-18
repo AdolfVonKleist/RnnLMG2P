@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <iostream>
-#include "BRnnHash.h"
+#include "LegacyRnnLMHash.h"
 
 static union{
   double d;
