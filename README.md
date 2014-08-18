@@ -1,4 +1,4 @@
-RnnLMG2P
+B0;95;cRnnLMG2P
 ========
 
 Hacking about with joint sequence RnnLMs
@@ -51,5 +51,6 @@ ABDUCTEES     AE B D AH K T IY Z </s>	13.7622
 EXAMPLE MODELS:
 ================
 A 'reasonable' example model for the CMUdict can be downloaded here:
-  https://www.dropbox.com/s/60hqp1irs4hq9u2/g014b2b.rnnlm
+
+ * https://www.dropbox.com/s/60hqp1irs4hq9u2/g014b2b.rnnlm
 
