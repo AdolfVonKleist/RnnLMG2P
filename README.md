@@ -1,4 +1,4 @@
-B0;95;cRnnLMG2P
+RnnLMG2P
 ========
 
 Hacking about with joint sequence RnnLMs
