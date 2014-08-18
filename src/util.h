@@ -31,15 +31,11 @@
 */
 #include <fst/fstlib.h>
 #include <utf8.h>
-#include <google/dense_hash_map>
 #ifdef __MACH__
 #include <mach/clock.h>
 #include <mach/mach.h>
 #endif
 using namespace fst;
-
-typedef struct LabelDatum { int max, tot, lhs, rhs; bool lhsE, rhsE; } LabelDatum;
-typedef google::dense_hash_map<LogArc::Label,LabelDatum> LabelData;
 
 string vec2str (vector<string> vec, string sep);
 

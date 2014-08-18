@@ -41,24 +41,26 @@ endif
 OUT=$(OBJS)
 
 CFLAGS ?= -O2     
-THIRD_PARTIES_INCLUDE ?= -I3rdparty/sparsehash -I3rdparty/utfcpp -I3rdparty/rnnlm
+THIRD_PARTIES_INCLUDE ?= -I3rdparty/utfcpp -I3rdparty/rnnlm
 
 EXTRA=$(CFLAGS) $(THIRD_PARTIES_INCLUDE) $(CXXFLAGS) $(CPPFLAGS) #-fopenmp
 
-OBJS=util.o rnnlmlib.o
+OBJS=rnnlmlib.o
 
 %.o: %.cc
 	$(CC) -std=c++0x -lfst -ldl $(THIRD_PARTIES_INCLUDE) $(CXXFLAGS) $(CPPFLAGS) -c $(<) -o $(@)
 
-all: rnnlm-g2p
+all: phonetisaurus-g2prnn
 
-rnnlm-g2p: rnnlmlib.o util.o
-	$(CC) -O2 -lfst -lm -std=c++0x -I3rdparty/sparsehash -I3rdparty/rnnlm -I3rdparty/utfcpp \
-	-funroll-loops -I. -ffast-math rnnlmlib.o util.o rnnlm-g2p.cc -o rnnlm-g2p
+phonetisaurus-g2prnn: rnnlmlib.o phonetisaurus-g2prnn.cc
+	$(CC) -O2 -lfst -lm -std=c++0x -I3rdparty/rnnlm -I3rdparty/utfcpp \
+	-funroll-loops -I. -ffast-math rnnlmlib.o phonetisaurus-g2prnn.cc -o phonetisaurus-g2prnn
 
-rnnlmlib.o: 3rdparty/rnnlm/rnnlmlib.cpp util.o
-	$(CC) $(EXTRA) -std=c++0x -fPIC -I. util.o \
-	-lfst -lm -ldl -funroll-loops -ffast-math -lm -w -c 3rdparty/rnnlm/rnnlmlib.cpp
+rnnlmlib.o: 3rdparty/rnnlm/rnnlmlib.cpp
+	$(CC) $(EXTRA) -std=c++0x -fPIC -I. -lfst -lm -ldl \
+	-funroll-loops -ffast-math -lm -w -c 3rdparty/rnnlm/rnnlmlib.cpp
 
+install: all
+	install -c phonetisaurus-g2prnn ../phonetisaurus-g2prnn
 clean:
-	$(RM) $(OUT) $(TMP) *.o rnnlm-g2p
+	$(RM) $(OUT) $(TMP) *.o phonetisaurus-g2prnn ../phonetisaurus-g2prnn

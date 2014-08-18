@@ -340,6 +340,7 @@ void CRnnLM::restoreContext2()
     for (a=0; a<layer1_size; a++) neu1[a].ac=neu1b2[a].ac;
 }
 
+/*
 void CRnnLM::SaveContext (std::string& id) {
   for (int a = 0; a < layer1_size; a++)
     NeuMap[id].neu[a].ac = neu1[a].ac;
@@ -349,7 +350,7 @@ void CRnnLM::RestoreContext (std::string& id) {
   for (int a = 0; a < layer1_size; a++)
     neu1[a].ac = NeuMap[id].neu[a].ac;
 }
-
+*/
 void CRnnLM::initNet()
 {
     int a, b, cl;
@@ -707,6 +708,7 @@ void CRnnLM::goToDelimiter(int delim, FILE *fi)
     }
 }
 
+/*
 void CRnnLM::MapJointToken (vocab_word* word) {
   string delim = "}";
   string tmp   = word->word;
@@ -731,6 +733,7 @@ void CRnnLM::MapJointToken (vocab_word* word) {
 vector<int>& CRnnLM::SearchJointVocab (string& word) {
   return joint_map [word];
 }
+*/
 
 void CRnnLM::restoreNet()    //will read whole network structure
 {
@@ -856,9 +859,10 @@ void CRnnLM::restoreNet()    //will read whole network structure
 	//fscanf(fi, "%d%d%s%d", &b, &vocab[a].cn, vocab[a].word, &vocab[a].class_index);
 	fscanf(fi, "%d%d", &b, &vocab[a].cn);
 	readWord(vocab[a].word, fi);
+	/*
 	if (joint == true)
 	  MapJointToken (&vocab[a]);
-
+	*/
 	fscanf(fi, "%d", &vocab[a].class_index);
 	//printf("%d  %d  %s  %d\n", b, vocab[a].cn, vocab[a].word, vocab[a].class_index);
     }
@@ -1048,7 +1052,7 @@ void CRnnLM::matrixXvector (struct neuron *dest, struct neuron *srcvec, struct s
     real val1, val2, val3, val4;
     real val5, val6, val7, val8;
     //cout << from << ", " << to << ", " << from2 << ", " << to2 << endl;
-    cout.precision (10);
+    //cout.precision (10);
     if (type == 0) {		//ac mod
       //cout << "MVals:" << endl;
       for (b = from; b < to; b++) {
@@ -1065,9 +1069,11 @@ void CRnnLM::matrixXvector (struct neuron *dest, struct neuron *srcvec, struct s
 	for (a=from2; a<to2; a++) {
 	  for (b=from; b<to; b++) {
 	    dest[a].er += srcvec[b].er * srcmatrix[a+b*matrix_width].weight;
+            /*
 	    cout << "ERROR: i: " << a << " j: " << b << " val: " << dest[a].er << " .. " 
 	         << "(" << srcvec[b].er << " * " << srcmatrix[a + b * matrix_width].weight 
 	         << ")" << endl;
+	    */
 	  }
     	}
       }
@@ -1303,11 +1309,13 @@ void CRnnLM::computeNet (int last_word, int word) {
 	//	  << neu2 [class_words [vocab [word].class_index] [c]].ac << std::endl;
       }
     }
+    /*
     cout << "Current: " << word << ", Prev: " << last_word << "\t";
     cout << " P (w|C): " << neu2[word].ac
 	 << " P (C): " << neu2[vocab_size + vocab [word].class_index].ac 
 	 << " P (w) = " << neu2[word].ac * neu2[vocab_size + vocab [word].class_index].ac
 	 << endl;
+    */
 }
 
 void CRnnLM::learnNet(int last_word, int word)
@@ -1331,7 +1339,7 @@ void CRnnLM::learnNet(int last_word, int word)
     for (c = 0; c < class_cn [vocab [word].class_index]; c++) {
 	a = class_words [vocab [word].class_index][c];
         neu2[a].er = (0 - neu2[a].ac);
-	cout << "er: " << neu2[a].er << endl;
+	//cout << "er: " << neu2[a].er << endl;
     }
     neu2 [word].er = (1 - neu2 [word].ac);	//word part
 
@@ -1347,7 +1355,7 @@ void CRnnLM::learnNet(int last_word, int word)
 
     neu2 [vocab [word].class_index + vocab_size].er = 
       (1 - neu2 [vocab [word].class_index + vocab_size].ac);	//class part
-    cout << "Class error: " << neu2 [vocab [word].class_index + vocab_size].er << endl;
+    //cout << "Class error: " << neu2 [vocab [word].class_index + vocab_size].er << endl;
     
     //
     //Learn direct connections between words
@@ -1485,7 +1493,7 @@ void CRnnLM::learnNet(int last_word, int word)
       }	else {
 	for (a = 0; a < layer1_size; a++)  {
 	  syn1 [a + c].weight += alpha * neu2[b].er * neu1[a].ac;	//weight 1->2 update
-	  cout << "syn1-newC: " << syn1 [a + c].weight << endl;
+	  //cout << "syn1-newC: " << syn1 [a + c].weight << endl;
 	}
       }
       c += layer1_size;
@@ -1539,7 +1547,7 @@ void CRnnLM::learnNet(int last_word, int word)
 	bptt_hidden [b].er = neu1 [b].er;
 	
       if (((counter % bptt_block) == 0) || (independent && (word == 0))) {
-	cout << "DO BPTT!" << endl;
+	//cout << "DO BPTT!" << endl;
 	for (step = 0; step < bptt + bptt_block - 2; step++) {
 	  for (a = 0; a < layer1_size; a++) 
 	    neu1[a].er = neu1[a].er * neu1[a].ac * (1 - neu1[a].ac);    //error derivation at layer 1
@@ -1554,7 +1562,7 @@ void CRnnLM::learnNet(int last_word, int word)
 	    
 	  for (a = layer0_size - layer1_size; a < layer0_size; a++) 
 	    neu0[a].er = 0;
-	  cout << "BPTT ERROR1: " << endl;
+	  //cout << "BPTT ERROR1: " << endl;
 	  matrixXvector (neu0, 
 			 neu1, 
 			 syn0, 
@@ -1673,7 +1681,7 @@ void CRnnLM::trainNet()
     while (1) {
         printf("Iter: %3d\tAlpha: %f\n   ", iter, alpha);
         fflush(stdout);
-        cout << "BPTT: " << bptt << endl;
+        //cout << "BPTT: " << bptt << endl;
         if (bptt > 0) 
 	  for (a = 0; a < bptt + bptt_block; a++) 
 	    bptt_history[a] = 0;
@@ -1692,10 +1700,11 @@ void CRnnLM::trainNet()
         while (1) {
 	  //cout << "Counter: " << counter << endl;
     	    counter++;
+	    /*
 	    for (int i = MAX_NGRAM_ORDER - 1; i >= 0; i--)
 	      cout << history [i] << " " << vocab [history[i]].word << ", ";
 	    cout << endl;
-
+	    */
 	    word = readWordIndex (fi);     //read next word
             computeNet (last_word, word);  //compute probability distribution
 	    

@@ -16,17 +16,18 @@
 #define exp10(n) pow((double)10,(4-n))
 #endif 
 
-#include <fst/fstlib.h>
-#include <tr1/unordered_map>
+//#include <fst/fstlib.h>
+//#include <tr1/unordered_map>
+#include <string>
 #include <vector>
-#include "util.h"
-using namespace fst;
+//#include "util.h"
+//using namespace fst;
 
 const int MAX_NGRAM_ORDER=20;
 typedef double real;		// doubles for NN weights
 typedef double direct_t;	// doubles for ME weights; TODO: check why floats are not enough for RNNME (convergence problems)
-typedef std::tr1::unordered_map<std::string, std::vector<int> > JointMap;
-typedef std::tr1::unordered_map<int, std::string> TokenMap;
+//typedef std::tr1::unordered_map<std::string, std::vector<int> > JointMap;
+//typedef std::tr1::unordered_map<int, std::string> TokenMap;
 
 struct neuron {
     real ac;		//actual value stored in neuron
@@ -45,14 +46,15 @@ struct vocab_word {
     int class_index;
 };
 
+/*
 struct RNNToken {
   RNNToken* parent;
   struct neuron* neu;
   int history[MAX_NGRAM_ORDER];
   vector<int> bptt_history;
 };
-
-typedef std::tr1::unordered_map<std::string, RNNToken> NeuTokenMap;
+*/
+//typedef std::tr1::unordered_map<std::string, RNNToken> NeuTokenMap;
 
 const unsigned int PRIMES [] = {
   108641969, 116049371, 125925907, 133333309, 
@@ -78,9 +80,9 @@ class CRnnLM {
   char rnnlm_file[MAX_STRING];
   char lmprob_file[MAX_STRING];
   bool joint;
-  JointMap joint_map;
-  TokenMap token_map;
-  NeuTokenMap NeuMap;
+  //JointMap joint_map;
+  //TokenMap token_map;
+  //NeuTokenMap NeuMap;
 
   int rand_seed;
     
@@ -305,8 +307,8 @@ class CRnnLM {
 	}
     }
 
-    void MapJointToken (vocab_word* word);
-    vector<int>& SearchJointVocab (string& word);
+    //void MapJointToken (vocab_word* word);
+    //vector<int>& SearchJointVocab (string& word);
     void SaveContext (std::string& id);
     void RestoreContext (std::string& id);
 
