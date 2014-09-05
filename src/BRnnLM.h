@@ -3,6 +3,8 @@
 
 #include <vector>
 #include <iostream>
+#include <iomanip>
+#include <fstream>
 #include "LegacyRnnLMHash.h"
 
 static union{
@@ -19,6 +21,12 @@ const int MAX_NGRAM_ORDER=20;
 
 struct Neuron {
   Neuron () : ac(0), er(0) {}
+
+  void Clear (real ac_ = 0.0) {
+    ac = ac_;
+    er = 0.0;
+  }
+
   real ac; //Activation
   real er; //Error residue
 };
@@ -29,12 +37,13 @@ struct Synapse {
 
 class BRnnLM {
  public:
-  BRnnLM (const BRnnHash& vocab, int hsize, int ndirect) 
-    : v_(vocab), hsize_(hsize), ndirect_(ndirect) { 
-    srand (1);
-    bptt = 3;
-    bptt_block = 2;
-    direct_order = 2;
+  BRnnLM (const LegacyRnnLMHash& vocab, int hsize, int ndirect, 
+	  int bptt_, int bptt_block_, int dorder, double alpha, 
+	  double beta, int seed = 1) 
+    : v_(vocab), hsize_(hsize), ndirect_(ndirect), bptt(bptt_),
+      bptt_block (bptt_block_), direct_order (dorder), 
+      alpha_(alpha), beta_(beta) { 
+    srand (seed);
     counter_ = 0;
     //Layer sizes
     isize_ = v_.vocab_.size () + hsize_;
@@ -47,30 +56,36 @@ class BRnnLM {
     neu1.resize (hsize_);
     neu2.resize (osize_);
     //Connections
-    std::cout << "Syn0:" << std::endl;
+    //std::cout << "Syn0:" << std::endl;
     syn0.resize (isize_ * hsize_);
     for (int j = 0; j < hsize_; j++) {
       for (int i = 0; i < isize_; i++) {
 	syn0[i + j * isize_].weight = 
 	  Random (-0.1, 0.1) + Random (-0.1, 0.1) + Random (-0.1, 0.1);
+	/*
 	std::cout << "i: " << i << " j: " << j 
 		  << " val: " << syn0[i + j * isize_].weight 
 		  << std::endl;
+	*/
       }
     }
 
-    std::cout << "Syn1:" << std::endl;
+    //std::cout << "Syn1:" << std::endl;
     syn1.resize (hsize_ * osize_);
     for (int j = 0; j < osize_; j++) {
       for (int i = 0; i < hsize_; i++) {
 	syn1[i + j * hsize_].weight = 
 	  Random (-0.1, 0.1) + Random (-0.1, 0.1) + Random (-0.1, 0.1);
+	/*
 	std::cout << "i: " << i << " j: " << j
 		  << " val: " << syn1[i + j * hsize_].weight
 		  << std::endl;
+	*/
       }
     }
 
+    //Direct connection synapses should be stored in a hash table.
+    // This way of doing things is crazy inefficient from a RAM/storage perspective.
     synd.resize (ndirect_);
     for (int i = 0; i < synd.size (); i++) 
       synd [i].weight = 0.0;
@@ -104,7 +119,7 @@ class BRnnLM {
     return rand () / (real)RAND_MAX * (max - min) + min;
   }
 
-  void ComputeNet (int previous, int current) {
+  double ComputeNet (int previous, int current) {
     //Activate the 'previous' word
     if (previous != -1)
       neu0 [previous].ac = 1;
@@ -218,7 +233,7 @@ class BRnnLM {
 	}
       }
     }
-    //End direct connection actiavations for classes
+    //End direct connection activations for classes
     /////////////////////////////////////////////////
 
     //Softmax on classes
@@ -285,7 +300,7 @@ class BRnnLM {
 	for (int i = begin; i <= end; i++) {
 	  for (int j = 0; j < direct_order; j++) {
 	    if (hash [j]) {
-	      std::cout << "Hash: " << j << " " << hash [j] << std::endl;
+	      //std::cout << "Hash: " << j << " " << hash [j] << std::endl;
 	      neu2 [i].ac += synd [hash [j]].weight;
 	      hash [j]++;
 	      //What is the idea here?  It is not guaranteed to be in the
@@ -317,26 +332,34 @@ class BRnnLM {
       }
     }
     //Output the actual prob now [P(w|c) * P(c)]
-    std::cout << "Current: " << current << ", Prev: " << previous << "\t";
-    std::cout << " P (w|C): " << neu2 [current].ac 
-	      << " P (C): " << neu2 [v_.vocab_.size () + v_.vocab_[current].class_index].ac 
-	      << " P (w) = " << neu2 [current].ac * neu2[v_.vocab_.size() + v_.vocab_[current].class_index].ac 
+    double wGc = neu2 [current].ac;
+    double c   = neu2 [v_.vocab_.size () + v_.vocab_[current].class_index].ac;
+    double w   = wGc * c;
+    /*
+    std::cout << "Current: "  << current << ", Prev: " << previous << "\t";
+    std::cout << " P (w|C): " << wGc 
+	      << " P (C): "   << c 
+	      << " P (w) = "  << w
 	      << std::endl;
+    */
+    return w;
   }
 
   void MatrixXVectorActivate (std::vector<Neuron>* src, std::vector<Neuron>* dest,
 			      std::vector<Synapse>& srcmat, int sbegin, int send,
 			      int dbegin, int dend) {
-    std::cout << sbegin << ", " << send << ", " << dbegin << ", " << dend << std::endl;
-    std::cout.precision (10);
+    //std::cout << sbegin << ", " << send << ", " << dbegin << ", " << dend << std::endl;
+    //std::cout.precision (10);
     //std::cout << "MVals: " << std::endl;
     for (int j = sbegin; j < send; j++) {
       for (int i = dbegin; i < dend; i++) {
-	std::cout << "BEFORE: " << std::fixed << (*dest)[j].ac;
+	//std::cout << "BEFORE: " << std::fixed << (*dest)[j].ac;
 	(*dest)[j].ac += (*src)[i].ac * srcmat[i + j * src->size ()].weight;
+	/*
 	std::cout << " ACTIVATE: i: " << i << " j: " << j << " val: " << (*dest)[j].ac 
 		  << " .. (" << (*src)[i].ac << " * "
 		  << srcmat [i + j * src->size ()].weight << ")" << std::endl;
+	*/
       }
     }
   }
@@ -344,26 +367,26 @@ class BRnnLM {
   void MatrixXVectorError (std::vector<Neuron>* src, std::vector<Neuron>* dest,
 			  std::vector<Synapse>& srcmat, int sbegin, int send,
 			  int dbegin, int dend) {
-    std::cout << sbegin << ", " << send << ", " << dbegin << ", " << dend << std::endl;
+    //std::cout << sbegin << ", " << send << ", " << dbegin << ", " << dend << std::endl;
     //std::cout << "MVals: " << std::endl;
     for (int i = dbegin; i < dend; i++) {
       for (int j = sbegin; j < send; j++ ) {
 	(*dest)[i].er += (*src)[j].er * srcmat [i + j * dest->size ()].weight;
+        /*
 	std::cout << "ERROR: i: " << i << " j: " << j << " val: " << (*dest)[i].er 
 		  << " .. (" << (*src)[j].er << " * " 
 		  << srcmat [i + j * dest->size ()].weight << ")" << std::endl;
+	*/
       }
     }
   }
 
   void LearnNet (int previous, int current) {
-    real alpha = 0.1;
-    real beta  = 1e-07;
     real beta2 = 1e-08;
     real beta3 = beta2 * 1;
-    std::cout << "ALPHA: " << alpha << std::endl;
-    std::cout << "BETA: " << beta << std::endl;
-    std::cout << "BETA2: " << beta2 << std::endl;
+    //std::cout << "ALPHA: " << alpha << std::endl;
+    //std::cout << "BETA: " << beta << std::endl;
+    //std::cout << "BETA2: " << beta2 << std::endl;
     counter_++;
 
     if (current == -1)
@@ -376,7 +399,7 @@ class BRnnLM {
     int end   = v_.class_sizes_[v_.vocab_[current].class_index].end;
     for (int i = begin; i <= end; i++) {
       neu2 [i].er = (0 - neu2 [i].ac);
-      std::cout << "er: " << neu2 [i].er << std::endl;
+      //std::cout << "er: " << neu2 [i].er << std::endl;
     }
     neu2 [current].er = (1 - neu2 [current].ac);
 
@@ -388,10 +411,11 @@ class BRnnLM {
 
     neu2 [v_.vocab_ [current].class_index + v_.vocab_.size ()].er =
       (1 - neu2[v_.vocab_ [current].class_index + v_.vocab_.size ()].ac);
+    /*
     std::cout << "Class error: " 
 	      << neu2 [v_.vocab_[current].class_index + v_.vocab_.size ()].er
 	      << std::endl;
-
+    */
     //////////////////////////////////////
     //Begin learning direct connections for words
     if (ndirect_ > 0) {
@@ -422,9 +446,9 @@ class BRnnLM {
 	for (int i = begin; i <= end; i++) {
 	  for (int j = 0; j < direct_order; j++) {
 	    if (hash [j]) {
-	      std::cout << "Hash: " << j << " " << hash [j] << std::endl;
+	      //std::cout << "Hash: " << j << " " << hash [j] << std::endl;
 	      synd [hash [j]].weight +=
-		alpha * neu2 [i].er - synd [hash [j]].weight * beta3;
+		alpha_ * neu2 [i].er - synd [hash [j]].weight * beta3;
 	      hash [j]++;
 	      hash [j] = hash [j] % ndirect_;
 	    } else {
@@ -458,7 +482,7 @@ class BRnnLM {
 	for (int j = 0; j < direct_order; j++) {
 	  if (hash [j]) {
 	    synd [hash [j]].weight +=
-	      alpha * neu2 [i].er - synd [hash [j]].weight * beta3;
+	      alpha_ * neu2 [i].er - synd [hash [j]].weight * beta3;
 	    hash [j]++;
 	  } else {
 	    break;
@@ -478,11 +502,11 @@ class BRnnLM {
       //Regularization anneals the weights
       if ((counter_ % 10) == 0) {
 	for (int j = 0; j < hsize_; j++)
-	  syn1 [j + t].weight += alpha * neu2 [i].er * neu1 [j].ac - syn1 [j + t].weight * beta2;
+	  syn1 [j + t].weight += alpha_ * neu2 [i].er * neu1 [j].ac - syn1 [j + t].weight * beta2;
       } else {
 	for (int j = 0; j < hsize_; j++) {
-	  syn1 [j + t].weight += alpha * neu2 [i].er * neu1 [j].ac;
-	  std::cout << "syn1-new: " << syn1 [j + t].weight << std::endl;
+	  syn1 [j + t].weight += alpha_ * neu2 [i].er * neu1 [j].ac;
+	  //std::cout << "syn1-new: " << syn1 [j + t].weight << std::endl;
 	}
       }
       t += hsize_;
@@ -495,12 +519,12 @@ class BRnnLM {
     for (int i = v_.vocab_.size (); i < osize_; i++) {
       if ((counter_ % 10) == 0) {
 	for (int j = 0; j < hsize_; j++) {
-	  syn1 [j + t].weight += alpha * neu2 [i].er * neu1 [j].ac - syn1 [j+ t].weight * beta2;
+	  syn1 [j + t].weight += alpha_ * neu2 [i].er * neu1 [j].ac - syn1 [j+ t].weight * beta2;
 	}
       } else {
 	for (int j = 0; j < hsize_; j++) {
-	  syn1 [j + t].weight += alpha * neu2 [i].er * neu1 [j].ac;
-	  std::cout << "syn1-newC: " << syn1 [j + t].weight << std::endl;
+	  syn1 [j + t].weight += alpha_ * neu2 [i].er * neu1 [j].ac;
+	  //std::cout << "syn1-newC: " << syn1 [j + t].weight << std::endl;
 	}
       }
       t += hsize_;
@@ -522,7 +546,7 @@ class BRnnLM {
       }
 
       if (((counter_ % bptt_block) == 0) || current == 0) {
-	std::cout << "DO BPTT!" << std::endl;
+	//std::cout << "DO BPTT!" << std::endl;
 	//Time step
 	for (int step = 0; step < bptt + bptt_block - 2; step++) {
 	  //Error derivation at hidden layer
@@ -537,7 +561,7 @@ class BRnnLM {
 	      //bptt_history [step] indexes into the synapse 
 	      // array for the word ID for the nth word in the history
 	      bptt_syn0 [bptt_history [step] + i * isize_].weight += 
-		alpha * neu1 [i].er;
+		alpha_ * neu1 [i].er;
 	    }
 	  }
 
@@ -546,7 +570,7 @@ class BRnnLM {
 	  for (int i = isize_ - hsize_; i < isize_; i++) {
 	    neu0 [i].er = 0;
 	  }
-	  std::cout << "BPTT ERROR1: " << std::endl;
+	  //std::cout << "BPTT ERROR1: " << std::endl;
 	  MatrixXVectorError (&neu1,
 			      &neu0,
 			      syn0,
@@ -558,7 +582,7 @@ class BRnnLM {
 	  //Copy and update the synapses for the current hidden layer
 	  for (int i = 0; i < hsize_; i++) {
 	    for (int j = isize_ - hsize_; j < isize_; j++) {
-	      bptt_syn0 [j + i * isize_].weight += alpha * neu1 [i].er * neu0 [j].ac;
+	      bptt_syn0 [j + i * isize_].weight += alpha_ * neu1 [i].er * neu0 [j].ac;
 	    }
 	  }
 	  //Propagate error from time T-n to T-n-1
@@ -636,6 +660,41 @@ class BRnnLM {
     }  
   }
 
+  void ClearActivations () {
+    for (int i = 0; i < v_.vocab_.size (); i++)
+      neu0 [i].Clear ();
+    for (int i = v_.vocab_.size (); i < isize_; i++) 
+      neu0 [i].Clear (0.1);
+    for (int i = 0; i < hsize_; i++)
+      neu1 [i].Clear ();
+    for (int i = 0; i < osize_; i++)
+      neu2 [i].Clear ();
+  }
+
+  double EvaluateSentence (const vector<int>& sentence) {
+    ClearActivations ();
+    NetReset ();
+    for (int i = 0; i < MAX_NGRAM_ORDER; i++)
+      history [i] = 0;
+    
+    int prev = 0;
+    double prob = 0.0;
+    
+    for (int i = 0; i < sentence.size (); i++) {
+      prob += log10 (ComputeNet (prev, sentence[i]));
+      CopyHiddenLayerToInput ();
+      if (prev != -1)
+	neu0 [prev].ac = 0;
+      prev = sentence [i];
+      for (int j = MAX_NGRAM_ORDER - 1; j > 0; j--)
+	history [j] = history [j - 1];
+      history [0] = prev;
+    }
+    ClearActivations ();
+    NetReset ();
+    return prob;
+  }
+
   void CopyHiddenLayerToInput () {
     for (int i = 0; i < hsize_; i++)
       neu0 [i + isize_ - hsize_].ac = neu1 [i].ac;
@@ -666,12 +725,74 @@ class BRnnLM {
     }
   }
 
-  const BRnnHash& v_;
+  void WriteRnnLMModel (const string& ofilename) {
+    //Write out the model in RnnLM text format.
+    std::ofstream ofile;
+    ofile.open (ofilename);
+    ofile << "version: 10" << endl;
+    ofile << "file format: 0" << endl;
+    ofile << endl;
+    ofile << "training data file: " << endl;
+    ofile << "validation data file: " << endl;
+    ofile << endl;
+    ofile << "last probability of validation data: 0.000000" << endl;
+    ofile << "number of finished iterations: 4" << endl;
+    ofile << "current position in training data: 0" << endl;
+    ofile << "current probability of training data: 0.000000" << endl;
+    ofile << "save after processing # words: 0" << endl;
+    ofile << "# of training words: 0" << endl;
+    ofile << "input layer size: " << isize_ << endl;
+    ofile << "hidden layer size: " << hsize_ << endl;
+    ofile << "compression layer size: 0" << endl;
+    ofile << "output layer size: " << osize_ << endl;
+    ofile << "direct connections: " << ndirect_ << endl;
+    ofile << "direct order: " << direct_order << endl;
+    ofile << "bptt: " << bptt << endl;
+    ofile << "bptt block: " << bptt_block << endl;
+    ofile << "vocabulary size: " << v_.vocab_.size () << endl;
+    ofile << "class size: " << v_.class_size_ << endl;
+    ofile << "old classes: 0" << endl;
+    ofile << "independent sentences mode: 1" << endl;
+    ofile << "starting learning rate: 0.100000" << endl;
+    ofile << "current learning rate: 0.100000" << endl;
+    ofile << "learning rate decrease: 0" << endl;
+    ofile << "\n" << endl;
+    ofile << "Vocabulary:" << endl;
+    for (int i = 0; i < v_.vocab_.size (); i++) {
+      ofile << std::setfill (' ') << std::setw (6) << i;
+      ofile << std::setw (11) << v_.vocab_[i].cn;
+      ofile << "\t" << v_.vocab_[i].word;
+      ofile << "   \t" << v_.vocab_[i].class_index << endl;
+    }
+    ofile << endl;
+    ofile << std::setprecision (4) << std::fixed;
+    ofile << "Hidden layer activation:" << endl;
+    for (int i = 0; i < hsize_; i++)
+      ofile << "1.0000" << endl;
+    ofile << endl;
+    ofile << "Weights 0->1:" << endl;
+    for (int i = 0; i < syn0.size (); i++)
+      ofile << syn0 [i].weight << endl;
+    ofile << "\n" << endl;
+    ofile << "Weights 1->2:" << endl;
+    for (int i = 0; i < syn1.size (); i++)
+      ofile << syn1 [i].weight << endl;
+    ofile << endl;
+    ofile << "Direct connections:" << endl;
+    ofile << std::setprecision (2);
+    for (int i = 0; i < synd.size (); i++)
+      ofile << synd [i].weight << endl;
+    ofile.close ();
+  }
+
+  const LegacyRnnLMHash& v_;
   int hsize_;
   int ndirect_;
   int isize_;
   int osize_;
   int counter_;
+  real alpha_;
+  real beta_;
   std::vector<Neuron> neu0;  // Input layer
   std::vector<Neuron> neu1;  // Hidden layer
   std::vector<Neuron> neu2;  // Output layer

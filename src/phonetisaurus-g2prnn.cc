@@ -86,6 +86,8 @@ DEFINE_string (rnnlm, "", "The input RnnLM model.");
 DEFINE_string (test,  "", "The input word list to evaluate.");
 DEFINE_int32  (beam,   7, "The local beam width.");
 DEFINE_int32  (nbest,  1, "Maximum number of hypotheses to return.");
+DEFINE_int32  (kmax,   5, "Maximum permitted branch factor for an arc.");
+DEFINE_double (hcost,  1.0, "Heuristic factor.");
 
 int main (int argc, char* argv []) {
   string usage = "phonetisaurus-g2prnn --rnnlm test.rnnlm --test test.words --nbest=5\n\n Usage: ";
@@ -102,10 +104,15 @@ int main (int argc, char* argv []) {
 
   for (int i = 0; i < corpus.size (); i++) {
     VectorFst<StdArc> fst = WordToFst<LegacyRnnLMHash> (corpus [i], h);
-    vector<vector<Chunk> > results = decoder.Decode (fst, FLAGS_beam, FLAGS_nbest);
+    vector<vector<Chunk> > results = decoder.Decode (fst, FLAGS_beam, FLAGS_kmax, FLAGS_nbest, FLAGS_hcost);
     for (int k = 0; k < results.size (); k++) {
       const vector<Chunk>& result = results [k];
       for (int j = 0; j < result.size (); j++) {
+	/*
+	cout << result [j].c << "\t"
+	     << h.vocab_[result [j].w].word 
+	     << endl;
+	*/
 	cout << h.vocab_[result [j].w].word << " ";
       }
       cout << result [result.size () - 1].t << endl;

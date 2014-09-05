@@ -5,6 +5,8 @@ use warnings;
 
 while (<STDIN>) {
     chomp;
+    next if m/^\s/;
+
     @_ = split (/\s+/);
     my @g;
     my @p;
@@ -12,7 +14,7 @@ while (<STDIN>) {
     for my $tok (@_) {
 	if ($tok eq "</s>") {
 	    push (@g, "");
-	    push (@p, $tok);
+	    #push (@p, $tok);
 	} else {
 	    my ($l, $s) = split (/\}/,$tok);
 	    $l =~ s/\|//g;
