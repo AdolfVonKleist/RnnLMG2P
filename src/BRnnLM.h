@@ -788,6 +788,9 @@ class BRnnLM {
   const LegacyRnnLMHash& v_;
   int hsize_;
   int ndirect_;
+  int bptt;
+  int bptt_block;
+  int direct_order;
   int isize_;
   int osize_;
   int counter_;
@@ -803,9 +806,6 @@ class BRnnLM {
   std::vector<Neuron> bptt_hidden;
   std::vector<Synapse> bptt_syn0;
   std::vector<int> history;
-  int direct_order;
-  int bptt_block;
-  int bptt;
 };
 
 

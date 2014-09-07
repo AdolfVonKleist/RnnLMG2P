@@ -176,6 +176,7 @@ class LegacyRnnLMDecodable {
   }
 
   //We need the synapses and the vocabulary hash
+  H& h;
   int isize;
   int hsize;
   int osize;
@@ -184,6 +185,5 @@ class LegacyRnnLMDecodable {
   vector<double> syn0;
   vector<double> syn1;
   vector<double> synd;
-  H& h;
 };
 #endif //LEGACY_RNNLM_DECODABLE_H__

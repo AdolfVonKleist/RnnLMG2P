@@ -49,13 +49,13 @@ class Token {
       hhash = hhash * 7877 + history [i];
   }
 
-  int state;
   int word;
-  mutable int key;
   mutable double weight;
-  mutable double g;
   mutable double total;
+  mutable double g;
   mutable Token* prev;
+  int state;
+  mutable int key;
   mutable vector<double> hlayer;
   mutable vector<int> history;
   size_t hhash;

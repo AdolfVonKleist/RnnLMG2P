@@ -55,12 +55,12 @@ all: phonetisaurus-g2prnn phonetisaurus-train-rnn
 phonetisaurus-g2prnn: rnnlmlib.o phonetisaurus-g2prnn.cc RnnLMDecoder.h LegacyRnnLMDecodable.h
 	$(CC) -O2 -lfst -lm -std=c++0x -I3rdparty/rnnlm -I3rdparty/utfcpp \
 	-funroll-loops -I. -ffast-math rnnlmlib.o phonetisaurus-g2prnn.cc \
-	-fopenmp -o phonetisaurus-g2prnn
+	-fopenmp -o phonetisaurus-g2prnn -lfst -ldl -lm
 
 phonetisaurus-train-rnn: BRnnLM.h LegacyRnnLMHash.h phonetisaurus-train-rnn.cc
-	$(CC) -O2 -lfst -funroll-loops -ffast-math -lm -std=c++0x -I. \
+	$(CC) -O2 -lfst -funroll-loops -ffast-math -lm -ldl -std=c++0x -I. \
 	phonetisaurus-train-rnn.cc \
-	-o phonetisaurus-train-rnn
+	-o phonetisaurus-train-rnn -lfst -ldl
 
 rnnlmlib.o: 3rdparty/rnnlm/rnnlmlib.cpp
 	$(CC) $(EXTRA) -std=c++0x -fPIC -I. -lfst -lm -ldl \

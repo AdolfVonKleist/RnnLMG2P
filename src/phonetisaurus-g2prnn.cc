@@ -31,7 +31,8 @@ void LoadCorpus (std::string& filename,
 }
 
 void LoadTestSet (const std::string& filename,
-		  std::vector<std::vector<std::string> >* corpus) {
+		  std::vector<std::vector<std::string> >* corpus,
+		  bool rev = false) {
   std::ifstream ifp (filename.c_str ());
   std::string line;
 
@@ -47,6 +48,9 @@ void LoadTestSet (const std::string& filename,
       while (ss >> word)
         words.push_back (word);
       
+      if (rev == true)
+	reverse (words.begin (), words.end ());
+
       words.push_back ("</s>");
       corpus->push_back (words);
     }
@@ -89,6 +93,7 @@ DEFINE_int32  (nbest,   1, "Maximum number of hypotheses to return.");
 DEFINE_int32  (threads, 1, "Number of parallel threads (OpenMP).");
 DEFINE_int32  (kmax,   20, "State-local maximum queue size.");
 DEFINE_int32  (beam,   20, "The state-local beam width.");
+DEFINE_bool   (reverse, false, "Reverse the input word before decoding.");
 
 int main (int argc, char* argv []) {
   string usage = "phonetisaurus-g2prnn --rnnlm test.rnnlm --test test.words --nbest=5\n\n Usage: ";
@@ -103,7 +108,7 @@ int main (int argc, char* argv []) {
 
   vector<vector<string> > corpus;
 
-  LoadTestSet (FLAGS_test, &corpus);
+  LoadTestSet (FLAGS_test, &corpus, FLAGS_reverse);
 
   typedef unordered_map<int, vector<vector<Chunk> > > RMAP;
   RMAP rmap;
@@ -132,8 +137,15 @@ int main (int argc, char* argv []) {
     
     for (int k = 0; k < results.size (); k++) {
       const vector<Chunk>& result = results [k];
-      for (int j = 0; j < result.size (); j++) {
-	cout << h.vocab_[result [j].w].word << " ";
+      if (FLAGS_reverse == true) {
+	for (vector<Chunk>::const_reverse_iterator rit = result.rbegin () + 1;
+	     rit != result.rend (); ++rit) 
+	  cout << h.vocab_[rit->w].word << " ";
+	cout << h.vocab_[result [result.size () - 1].w].word << " ";
+      } else {
+	for (vector<Chunk>::const_iterator it = result.begin ();
+	     it !=result.end (); ++it)
+	  cout << h.vocab_[it->w].word << " ";
       }
       cout << result [result.size () - 1].t << "\n";
     }
