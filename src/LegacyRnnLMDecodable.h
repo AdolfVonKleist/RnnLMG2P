@@ -4,6 +4,8 @@
 using std::vector;
 
 //Fast exponent implementation from RnnLM
+
+/*
 static union {
   double d;
   struct{
@@ -13,6 +15,27 @@ static union {
 #define EXP_A (1048576/M_LN2)
 #define EXP_C 60801
 #define FAST_EXP(y)(d2i.n.i=EXP_A*(y)+(1072693248-EXP_C),d2i.d)
+*/
+
+#ifdef __cplusplus
+#define cast_uint32_t static_cast<uint32_t>
+#else
+#define cast_uint32_t (uint32_t)
+#endif
+static inline float fastpow2 (float p) {
+  float offset = (p < 0) ? 1.0f : 0.0f;
+  float clipp = (p < -126) ? -126.0f : p;
+  int w = clipp;
+  float z = clipp - w + offset;
+  union { uint32_t i; float f; } v = { cast_uint32_t ( (1 << 23) * (clipp + 121.2740575f + 27.7280233f / (4.84252568f - z) - 1.49012907f * z) ) };
+
+  return v.f;
+}
+
+static inline float FAST_EXP (float p) {
+  return fastpow2 (1.442695040f * p);
+}
+
 
 template<class T, class H>
 class LegacyRnnLMDecodable {

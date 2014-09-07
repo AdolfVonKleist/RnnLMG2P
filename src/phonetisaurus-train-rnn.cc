@@ -60,6 +60,9 @@ void LoadCorpus (std::string& filename,
 void LearnOneIter (BRnnLM& r, vector<vector<int> >& corpus) {
   //////////////////////////////////
   //Learn for one iteration
+  //Shuffle the training corpus before each iteration.  Important!!!!
+  std::random_shuffle (corpus.begin (), corpus.end ());
+
   if (r.bptt > 0) 
     for (int i = 0; i < r.bptt + r.bptt_block; i++) 
       r.bptt_history [i] = 0;
@@ -69,15 +72,6 @@ void LearnOneIter (BRnnLM& r, vector<vector<int> >& corpus) {
   for (int c = 0; c < corpus.size (); c++) {
     int prev = 0;
     for (int i = 0; i < corpus[c].size (); i++) {
-      //std::cout << "Counter: " << r.counter_ << std::endl;
-      //print bptt history
-      /*
-      for (int i = MAX_NGRAM_ORDER - 1; i >= 0; i--) 
-	std::cout << r.history [i] << " " << r.v_.vocab_[r.history [i]].word << ", ";
-      std::cout << std::endl;
-      */
-      ///////////////////////
-
       r.ComputeNet (prev, corpus[c][i]);
       // Shift bptt memory for next step
       if (r.bptt > 0) {
@@ -102,8 +96,8 @@ void LearnOneIter (BRnnLM& r, vector<vector<int> >& corpus) {
       if (prev != -1)
 	r.neu0 [prev].ac = 0;
       prev = corpus[c][i];
-      for (int i = MAX_NGRAM_ORDER - 1; i > 0; i--) 
-	r.history [i] = r.history [i - 1];
+      for (int j = MAX_NGRAM_ORDER - 1; j > 0; j--) 
+	r.history [j] = r.history [j - 1];
       r.history [0] = prev;
     }
     r.NetReset ();
@@ -113,10 +107,13 @@ void LearnOneIter (BRnnLM& r, vector<vector<int> >& corpus) {
 void Validate (BRnnLM& r, vector<vector<int> >& valid) {
   //////////////////////////////////
   //Validate for one iteration
+  double logp = 0;
   for (int c = 0; c < valid.size (); c++) {
     double prob = r.EvaluateSentence (valid [c]);
-    //cout << "S[" << c << "]: " << prob << endl;
+    logp += prob;
+    cout << "S[" << c << "]: " << prob << endl;
   }
+  cout << "Validation: " << logp << endl;
 }
 
 

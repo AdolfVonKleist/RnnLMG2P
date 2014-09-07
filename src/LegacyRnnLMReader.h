@@ -24,7 +24,7 @@ class LegacyRnnLMReader {
     rnnlm_.restoreNet ();
   }
 
-  Decodable CopyLegacyRnnLM (Hasher& h, int max_order = 8) {
+  Decodable CopyLegacyRnnLM (Hasher& h, int max_order = 5) {
     //Copy static data that can be shared by all tokens
     Decodable d (h, rnnlm_.layer0_size, rnnlm_.layer1_size,
 		 rnnlm_.layer2_size, rnnlm_.direct_order, 

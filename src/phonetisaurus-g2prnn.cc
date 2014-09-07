@@ -3,6 +3,7 @@
 #include "LegacyRnnLMDecodable.h"
 #include "LegacyRnnLMReader.h"
 #include "RnnLMDecoder.h"
+#include <omp.h>
 using namespace fst;
 
 template<class H>
@@ -16,7 +17,6 @@ void LoadCorpus (std::string& filename,
       getline (ifp, line);
       if (line.empty ())
         continue;
-      
       std::string word;
       std::vector<int> words;
       std::stringstream ss (line);
@@ -55,7 +55,7 @@ void LoadTestSet (const std::string& filename,
 }
 
 template<class H>
-VectorFst<StdArc> WordToFst (vector<string>& word, H& h) {
+VectorFst<StdArc> WordToFst (const vector<string>& word, H& h) {
   VectorFst<StdArc> fst;
   fst.AddState ();
   fst.SetStart (0);
@@ -82,42 +82,62 @@ VectorFst<StdArc> WordToFst (vector<string>& word, H& h) {
 
 typedef LegacyRnnLMDecodable<Token, LegacyRnnLMHash> Decodable;
 
-DEFINE_string (rnnlm, "", "The input RnnLM model.");
-DEFINE_string (test,  "", "The input word list to evaluate.");
-DEFINE_int32  (beam,   7, "The local beam width.");
-DEFINE_int32  (nbest,  1, "Maximum number of hypotheses to return.");
-DEFINE_int32  (kmax,   5, "Maximum permitted branch factor for an arc.");
-DEFINE_double (hcost,  1.0, "Heuristic factor.");
+DEFINE_string (rnnlm,  "", "The input RnnLM model.");
+DEFINE_string (test,   "", "The input word list to evaluate.");
+DEFINE_int32  (order,   8, "Maximum order for ngram model.");
+DEFINE_int32  (nbest,   1, "Maximum number of hypotheses to return.");
+DEFINE_int32  (threads, 1, "Number of parallel threads (OpenMP).");
+DEFINE_int32  (kmax,   20, "State-local maximum queue size.");
+DEFINE_int32  (beam,   20, "The state-local beam width.");
 
 int main (int argc, char* argv []) {
   string usage = "phonetisaurus-g2prnn --rnnlm test.rnnlm --test test.words --nbest=5\n\n Usage: ";
   set_new_handler (FailedNewHandler);
   SetFlags (usage.c_str (), &argc, &argv, false);
+  if (FLAGS_rnnlm.compare ("") == 0 || FLAGS_test.compare ("") == 0) {
+    cout << "--rnnlm and --test are required!" << endl;
+    exit (1);
+  }
+    
+  omp_set_num_threads (FLAGS_threads);
+
+  vector<vector<string> > corpus;
+
+  LoadTestSet (FLAGS_test, &corpus);
+
+  typedef unordered_map<int, vector<vector<Chunk> > > RMAP;
+  RMAP rmap;
+  int csize = corpus.size ();
 
   LegacyRnnLMReader<Decodable, LegacyRnnLMHash> reader (FLAGS_rnnlm);
   LegacyRnnLMHash h = reader.CopyVocabHash ();
   Decodable s = reader.CopyLegacyRnnLM (h);
-  RnnLMDecoder<Decodable> decoder (s);
-  vector<vector<string> > corpus;
-  
-  LoadTestSet (FLAGS_test, &corpus);
 
-  for (int i = 0; i < corpus.size (); i++) {
-    VectorFst<StdArc> fst = WordToFst<LegacyRnnLMHash> (corpus [i], h);
-    vector<vector<Chunk> > results = decoder.Decode (fst, FLAGS_beam, FLAGS_kmax, FLAGS_nbest, FLAGS_hcost);
+  #pragma omp parallel for
+  for (int x = 0; x < FLAGS_threads; x++) {
+    RnnLMDecoder<Decodable> decoder (s);
+
+    int start = x * (csize / FLAGS_threads);
+    int end   = (x == FLAGS_threads - 1) ? csize : start + (csize / FLAGS_threads);
+    for (int i = start; i < end; i++) {
+      VectorFst<StdArc> fst = WordToFst<LegacyRnnLMHash> (corpus [i], h);
+      vector<vector<Chunk> > results = decoder.Decode (fst, FLAGS_beam, FLAGS_kmax, 
+						       FLAGS_nbest);
+      rmap [i] = results;
+    }
+  }
+
+  for (int i = 0; i < csize; i++) {
+    const vector<vector<Chunk> >& results = rmap [i];
+    
     for (int k = 0; k < results.size (); k++) {
       const vector<Chunk>& result = results [k];
       for (int j = 0; j < result.size (); j++) {
-	/*
-	cout << result [j].c << "\t"
-	     << h.vocab_[result [j].w].word 
-	     << endl;
-	*/
 	cout << h.vocab_[result [j].w].word << " ";
       }
-      cout << result [result.size () - 1].t << endl;
+      cout << result [result.size () - 1].t << "\n";
     }
   }
-  
+
   return 1;
 }

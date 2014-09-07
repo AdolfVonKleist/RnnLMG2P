@@ -52,12 +52,12 @@ OBJS=rnnlmlib.o
 
 all: phonetisaurus-g2prnn phonetisaurus-train-rnn
 
-phonetisaurus-g2prnn: rnnlmlib.o phonetisaurus-g2prnn.cc
+phonetisaurus-g2prnn: rnnlmlib.o phonetisaurus-g2prnn.cc RnnLMDecoder.h LegacyRnnLMDecodable.h
 	$(CC) -O2 -lfst -lm -std=c++0x -I3rdparty/rnnlm -I3rdparty/utfcpp \
 	-funroll-loops -I. -ffast-math rnnlmlib.o phonetisaurus-g2prnn.cc \
-	-o phonetisaurus-g2prnn
+	-fopenmp -o phonetisaurus-g2prnn
 
-phonetisaurus-train-rnn: BRnnLM.h LegacyRnnLMHash.h
+phonetisaurus-train-rnn: BRnnLM.h LegacyRnnLMHash.h phonetisaurus-train-rnn.cc
 	$(CC) -O2 -lfst -funroll-loops -ffast-math -lm -std=c++0x -I. \
 	phonetisaurus-train-rnn.cc \
 	-o phonetisaurus-train-rnn

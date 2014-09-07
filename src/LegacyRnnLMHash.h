@@ -58,9 +58,11 @@ class LegacyRnnLMHash {
   void MapToken (string& token) {
     std::vector<std::string> gp;
     std::vector<std::string> graphs;
+    //std::vector<std::string> phones;
 
     Split (token, *gp_delim, gp);
     Split (gp [0], *g_delim, graphs);
+    //Split (gp [1], *g_delim, phones);
 
     size_t hash = 0;
     for (int i = 0; i < graphs.size (); i++)
@@ -70,6 +72,11 @@ class LegacyRnnLMHash {
       imap [hash] = std::vector<int> {FindWord (token)};
     else
       imap [hash].push_back (FindWord (token));
+
+    /*
+    if (omap.find (FindWord (token)) == omap.end ())
+      omap [FindWord (token)] = phones;
+    */
   }
 
   int HashWord (std::string& word) const {
@@ -169,6 +176,7 @@ class LegacyRnnLMHash {
   std::vector<VocabWord> vocab_;
   std::vector<ClassIndex> class_sizes_;
   std::unordered_map<int, std::vector<int> > imap;
+  //std::unordered_map<int, std::vector<int> > omap;
   fst::SymbolTable isyms;
   int class_size_;
 };

@@ -9,6 +9,7 @@
 
 using fst::VectorFst;
 using fst::ArcIterator;
+using fst::StateIterator;
 using fst::StdArc;
 using fst::Heap;
 using std::vector;
@@ -44,7 +45,7 @@ class Token {
 
   void HashHistory () {
     hhash = state * 7853;
-    for (int i = 0; i < 7; i++)
+    for (int i = 0; i < history.size (); i++)
       hhash = hhash * 7877 + history [i];
   }
 
@@ -123,75 +124,69 @@ class RnnLMDecoder {
     return 0.0;
   }
 
-  Results Decode (VectorFst<StdArc>& fst, int beam, int kMax, int nbest, double hcost) {
+  Results Decode (VectorFst<StdArc>& fst, int beam, int kMax, int nbest) {
+    for (int i = 0; i < sQueue.size (); i++)
+      sQueue [i].Clear ();
+    sQueue.resize (fst.NumStates () + 1);
+
     Initialize ();
     int n = 0;
-    double best;
-    Queue sQueue;
-    TokenSet sPool;
-
-    while (!queue.Empty () && n < nbest) {
-      Token* top = queue.Pop ();
-      if (fst.Final (top->state) != StdArc::Weight::Zero ()) {
-	Token* a = (Token*)&(*top);
-	vector<Chunk> result;
-	while (a->prev != NULL) {
-	  result.push_back (Chunk (a->word, a->weight, a->total));
-	  a = (Token*)a->prev;
+    for (StateIterator<VectorFst<StdArc> > siter (fst);
+	 !siter.Done(); siter.Next ()) {
+      int s = siter.Value ();
+      int k = 0;
+      while (!sQueue [s].Empty () && k < kMax && n < nbest) {
+	Token* top = sQueue [s].Pop ();
+	if (fst.Final (top->state) != StdArc::Weight::Zero ()) {
+	  Token* a = (Token*)&(*top);
+	  vector<Chunk> result;
+	  while (a->prev != NULL) {
+	    result.push_back (Chunk (a->word, a->weight, a->total));
+	    a = (Token*)a->prev;
+	  }
+	  reverse (result.begin (), result.end ());
+	  results.push_back (result);
+	  n++;
+	  continue;
 	}
-	reverse (result.begin (), result.end ());
-	results.push_back (result);
-	n++;
-	continue;
-      }
 
-      for (ArcIterator<VectorFst<StdArc> > aiter (fst, top->state);
-	   !aiter.Done (); aiter.Next ()) {
-	const StdArc& arc = aiter.Value ();
-	const vector<int>& map = d.h.imap [arc.ilabel];
-	sQueue.Clear ();
+	for (ArcIterator<VectorFst<StdArc> > aiter (fst, top->state);
+	     !aiter.Done (); aiter.Next ()) {
+	  const StdArc& arc = aiter.Value ();
+	  const vector<int>& map = d.h.imap [arc.ilabel];
+	
+	  for (int i = 0; i < map.size (); i++) {
+	    Token ntoken ((Token*)&(*top), map [i], arc.nextstate);
+	    ntoken.weight = -log (d.ComputeNet ((*top), &ntoken));
+	    if (ntoken.weight > beam)
+	      continue;
 
-	best = 999;
-	for (int i = 0; i < map.size (); i++) {
-	  Token nexttoken ((Token*)&(*top), map [i], arc.nextstate);
-	  nexttoken.weight = -log (d.ComputeNet ((*top), &nexttoken));
-	  nexttoken.total += top->total + nexttoken.weight;
-	  nexttoken.g = nexttoken.total + Heuristic (arc.nextstate, fst.NumStates (), hcost);
-	  if (nexttoken.weight < best || abs (nexttoken.weight - best) < beam) {
-	    TokenSet::iterator nextiterator = pool.find (nexttoken);
+	    ntoken.total += top->total + ntoken.weight;
+	    //Heuristic here if we use one (we don't)
+	    ntoken.g = ntoken.total;
 
-	    if (nextiterator == pool.end ()) {
-	      pool.insert (nexttoken);
-	      Token* nextpointer = (Token*)&(*pool.find (nexttoken));
-	      //nextpointer->key = queue.Insert (nextpointer);
-	      sQueue.Insert (nextpointer);
+	    TokenSet::iterator niterator = pool.find (ntoken);
+	      
+	    if (niterator == pool.end ()) {
+	      pool.insert (ntoken);
+	      Token* npointer = (Token*)&(*pool.find (ntoken));
+	      sQueue [arc.nextstate].Insert (npointer);
 	    } else {
-	      //cout << "Found: " << arc.ilabel << " : " << nexttoken.word << endl;
-	      if (nexttoken.total < nextiterator->total) {
-		nextiterator->weight  = nexttoken.weight;
-		nextiterator->total   = nexttoken.total;
-		nextiterator->prev    = nexttoken.prev;
-		nextiterator->history = nexttoken.history;
-		nextiterator->g       = nexttoken.g;
-		nextiterator->hlayer  = nexttoken.hlayer;
-		queue.Update (nextiterator->key, (Token*)&(*nextiterator));
+	      if (ntoken.g < niterator->g) {
+		niterator->weight  = ntoken.weight;
+		niterator->total   = ntoken.total;
+		niterator->prev    = ntoken.prev;
+		niterator->history = ntoken.history;
+		niterator->g       = ntoken.g;
+		niterator->hlayer  = ntoken.hlayer;
+		sQueue [arc.nextstate].Insert ((Token*)&(*niterator));
 	      }
 	    }
-
-	    if (nexttoken.weight < best)
-	      best = nexttoken.weight;
 	  }
 	}
-
-	int k = 0;
-	while (!sQueue.Empty () && k < kMax) {
-	  Token* tpointer = sQueue.Pop ();
-	  tpointer->key = queue.Insert (tpointer);
-	  k++;
-	}
+	k++;
       }
     }
-
     return results;
   }
 
@@ -200,19 +195,18 @@ class RnnLMDecoder {
 
  private:
   void Initialize () {
-    queue.Clear ();
     pool.clear ();
     results.clear ();
-
+    
     Token start (d.hsize, d.max_order);
     pool.insert (start);
     TokenSet::iterator prev = pool.find (start);
-    prev->key = queue.Insert ((Token*)&(*prev));
+    prev->key = sQueue [0].Insert ((Token*)&(*prev));
     return;
   }
 
   Decodable& d;
-  Queue    queue;
+  vector<Queue> sQueue;
   TokenSet pool;
 };
 #endif // RNNLM_DECODER_H__

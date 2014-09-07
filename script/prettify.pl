@@ -6,6 +6,7 @@ use warnings;
 while (<STDIN>) {
     chomp;
     next if m/^\s/;
+    next if m/^Start/;
 
     @_ = split (/\s+/);
     my @g;
