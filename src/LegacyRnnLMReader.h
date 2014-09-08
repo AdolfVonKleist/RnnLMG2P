@@ -41,6 +41,20 @@ class LegacyRnnLMReader {
     return d;
   }
   
+  Hasher CopyVocabHash (const string g_delim, const string gp_delim) {
+    Hasher h (rnnlm_.class_size, g_delim, gp_delim);
+    for (int i = 0; i < rnnlm_.vocab_size; i++) {
+      string word = rnnlm_.vocab [i].word;
+      h.AddWordToVocab (word, rnnlm_.vocab [i].cn);
+    }
+    h.SortVocab ();
+    h.SetClasses ();
+    for (int i = 0; i < h.vocab_.size (); i++)
+      h.MapToken (h.vocab_[i].word);
+    
+    return h;
+  }
+  
   Hasher CopyVocabHash () {
     Hasher h (rnnlm_.class_size);
     for (int i = 0; i < rnnlm_.vocab_size; i++) {

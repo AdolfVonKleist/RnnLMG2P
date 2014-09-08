@@ -31,13 +31,17 @@ struct ClassIndex {
 
 class LegacyRnnLMHash {
  public:
-  LegacyRnnLMHash (int class_size) : class_size_ (class_size) {
+  LegacyRnnLMHash (int class_size) 
+    : class_size_ (class_size), g_delim_("|"), gp_delim_("}") {
+    vocab_hash_.resize (100000000);
+  }
+
+  LegacyRnnLMHash (int class_size, const string g_delim, const string gp_delim) 
+    : class_size_ (class_size), g_delim_(g_delim.c_str ()), gp_delim_(gp_delim.c_str ()) {
     vocab_hash_.resize (100000000);
   }
 
   static const std::vector<unsigned int> primes_;
-  static const char* g_delim;
-  static const char* gp_delim;
 
   void Split (const std::string& s, char delim, std::vector<std::string>& elems) {
     std::stringstream ss (s);
@@ -60,8 +64,8 @@ class LegacyRnnLMHash {
     std::vector<std::string> graphs;
     //std::vector<std::string> phones;
 
-    Split (token, *gp_delim, gp);
-    Split (gp [0], *g_delim, graphs);
+    Split (token, *gp_delim_, gp);
+    Split (gp [0], *g_delim_, graphs);
     //Split (gp [1], *g_delim, phones);
 
     size_t hash = 0;
@@ -179,6 +183,8 @@ class LegacyRnnLMHash {
   //std::unordered_map<int, std::vector<int> > omap;
   fst::SymbolTable isyms;
   int class_size_;
+  const char* g_delim_;
+  const char* gp_delim_;
 };
 
 const std::vector<unsigned int> LegacyRnnLMHash::primes_ = {
@@ -193,7 +199,7 @@ const std::vector<unsigned int> LegacyRnnLMHash::primes_ = {
   940740127, 953085797, 985184539, 990122807
 };
 
-const char* LegacyRnnLMHash::g_delim  = "|";
-const char* LegacyRnnLMHash::gp_delim = "}";
+//const char* LegacyRnnLMHash::g_delim  = "|";
+//const char* LegacyRnnLMHash::gp_delim = "}";
 
 #endif // LEGACY_RNNLM_HASH_H__
