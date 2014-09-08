@@ -29,24 +29,41 @@ This also addresses several issues with the default RnnLM where G2P is concerned
   * Model compression.  The neurons and much of the direct-connections synapse 
      table can probably be compressed a good deal.  These are mostly empty.
 
-USAGE:
+Quickstart USAGE:
 ================
 ```
 $ cd src/
 $ make && make install
 $ cd ..
-$ ./phonetisaurus-g2prnn --rnnlm=g014b2b.rnnlm --test=script/spaced.100.wlist \
-  --beam=6 --nbest=1 | ./script/prettify.pl
-ABANDONED     AH B AE N D AH N D </s>	   17.2936
-ABBATIELLO    AA B AA T IY EH L OW </s>	   18.0768
-ABBENHAUS     AE B AH N HH AW S </s>	   21.0564
-ABBEVILLE     AE B V IH L </s>	15.0214
-ABBOUD	      AH B AW D </s>	14.2237
-ABBREVIATION  AH B R IY V IY EY SH AH N </s>	12.2586
-ABDOLLAH      AE B D AA L AH </s>  16.4175
-ABDUCTEES     AE B D AH K T IY Z </s>	13.7622
+#Train up a model - probably best to use a smallish corpus to start!
+#--corpus should be an aligned joint-token corpus such as that output
+# by AltFstAligner or phonetisaurus-align.
+$ cd script/
+#This will train up an rnnlm with some reasonable G2P parameters
+# See --help and the example output for details.  You may need to tweak these a bit!
+$ ./train-g2p-rnnlm.py --corpus test.corpus
+
+# Run the model with the toy corpus (provide a file instead of 'echo' if you have a file)
+$ ../phonetisaurus-g2prnn --rnnlm=test.rnnlm --test=<(echo "PERSISTANT") --nbest=5 \
+  | ./prettify.pl
+PERSISTANT P ER S IH S T AH N T	24.258
+PERSISTANT P ER S AH S T AE N T	27.4669
+PERSISTANT P ER S AH S T AA N T	27.5301
+PERSISTANT P ER S IH S AH N T 27.5923
+PERSISTANT P ER S AH S T EY N T	29.8902
+...
+
+#See --help for more arguments.  If running a large test set, note that the g2prnn
+# decoder has OpenMP support.  You can set the number of parallel threads with the
+# --threads=N parameter.
+#If you are NOT using the default delimeter '}', you need to specify this to the decoder
+# AND to the 'prettify' script, e.g.:
+$ ../phonetisaurus-g2prnn --rnnlm=ru.rnnlm --gpdelim="#" \
+  --test=<(echo "английский") --nbest=1 | ./prettify.pl false "#"
+английский		  a n g l i y s k i y		 17.2149
 ...
 ```
+
 
 EXAMPLE MODELS:
 ================

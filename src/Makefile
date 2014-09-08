@@ -50,7 +50,7 @@ OBJS=rnnlmlib.o
 %.o: %.cc
 	$(CC) -std=c++0x -lfst -ldl $(THIRD_PARTIES_INCLUDE) $(CXXFLAGS) $(CPPFLAGS) -c $(<) -o $(@)
 
-all: phonetisaurus-g2prnn phonetisaurus-train-rnn
+all: phonetisaurus-g2prnn phonetisaurus-train-rnn rnnlm
 
 phonetisaurus-g2prnn: rnnlmlib.o phonetisaurus-g2prnn.cc RnnLMDecoder.h LegacyRnnLMDecodable.h
 	$(CC) -O2 -lfst -lm -std=c++0x -I3rdparty/rnnlm -I3rdparty/utfcpp \
@@ -62,13 +62,19 @@ phonetisaurus-train-rnn: BRnnLM.h LegacyRnnLMHash.h phonetisaurus-train-rnn.cc
 	phonetisaurus-train-rnn.cc \
 	-o phonetisaurus-train-rnn -lfst -ldl
 
-rnnlmlib.o: 3rdparty/rnnlm/rnnlmlib.cpp
+rnnlmlib.o: 3rdparty/rnnlm/rnnlmlib.cpp 3rdparty/rnnlm/rnnlmlib.h
 	$(CC) $(EXTRA) -std=c++0x -fPIC -I. -lfst -lm -ldl \
 	-funroll-loops -ffast-math -lm -w -c 3rdparty/rnnlm/rnnlmlib.cpp
+
+#Support the legacy trainer for now
+rnnlm: rnnlm.cc rnnlmlib.o
+	$(CC) $(EXTRA) -std=c++0x -fPIC -I. -funroll-loops -ffast-math -lm -w \
+	rnnlmlib.o -o rnnlm rnnlm.cc
 
 install: all
 	install -c phonetisaurus-g2prnn ../phonetisaurus-g2prnn && \
 	install -c phonetisaurus-train-rnn ../phonetisaurus-train-rnn
+	install -c rnnlm ../rnnlm
 clean:
 	$(RM) $(OUT) $(TMP) *.o phonetisaurus-g2prnn ../phonetisaurus-g2prnn \
-	phonetisaurus-train-rnn ../phonetisaurus-train-rnn
+	phonetisaurus-train-rnn ../phonetisaurus-train-rnn rnnlm ../rnnlm 
