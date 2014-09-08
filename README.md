@@ -35,15 +35,18 @@ Quickstart USAGE:
 $ cd src/
 $ make && make install
 $ cd ..
+
 #Train up a model - probably best to use a smallish corpus to start!
 #--corpus should be an aligned joint-token corpus such as that output
 # by AltFstAligner or phonetisaurus-align.
 $ cd script/
+
 #This will train up an rnnlm with some reasonable G2P parameters
 # See --help and the example output for details.  You may need to tweak these a bit!
 $ ./train-g2p-rnnlm.py --corpus test.corpus
 
-# Run the model with the toy corpus (provide a file instead of 'echo' if you have a file)
+# Run the model with the toy corpus 
+# Provide a file instead of 'echo' if you have a file)
 $ ../phonetisaurus-g2prnn --rnnlm=test.rnnlm --test=<(echo "PERSISTANT") --nbest=5 \
   | ./prettify.pl
 PERSISTANT P ER S IH S T AH N T	24.258
@@ -67,7 +70,8 @@ $ ../phonetisaurus-g2prnn --rnnlm=ru.rnnlm --gpdelim="#" \
 
 EXAMPLE MODELS:
 ================
-A 'reasonable' example model for the CMUdict can be downloaded here:
-
+Two 'reasonable' example models for the CMUdict can be downloaded here:
+#### Forward:
  * https://www.dropbox.com/s/60hqp1irs4hq9u2/g014b2b.rnnlm
-
+#### Backward:
+ * https://www.dropbox.com/s/rf7r9m2vhkvxyju/g014b2b.rev.rnnlm
