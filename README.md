@@ -59,8 +59,8 @@ PERSISTANT P ER S AH S T EY N T	29.8902
 #See --help for more arguments.  If running a large test set, note that the g2prnn
 # decoder has OpenMP support.  You can set the number of parallel threads with the
 # --threads=N parameter.
-#If you are NOT using the default delimeter '}', you need to specify this to the decoder
-# AND to the 'prettify' script, e.g.:
+#If you are NOT using the default delimeter '}', you need to specify this to the 
+# decoder AND to the 'prettify' script, e.g.:
 $ ../phonetisaurus-g2prnn --rnnlm=ru.rnnlm --gpdelim="#" \
   --test=<(echo "английский") --nbest=1 | ./prettify.pl false "#"
 английский		  a n g l i y s k i y		 17.2149
@@ -73,5 +73,6 @@ EXAMPLE MODELS:
 Two 'reasonable' example models for the CMUdict can be downloaded here:
 #### Forward:
  * https://www.dropbox.com/s/60hqp1irs4hq9u2/g014b2b.rnnlm
+
 #### Backward:
  * https://www.dropbox.com/s/rf7r9m2vhkvxyju/g014b2b.rev.rnnlm
