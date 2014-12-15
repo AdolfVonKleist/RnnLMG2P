@@ -36,18 +36,42 @@ def TrainRnnLM (args) :
         print "Quitting because rnnlm tool will update this instead of retraining."
         print "Please choose a new prefix or delete the old rnnlm."
         sys.exit ()
-    command = "../rnnlm -train {0} -valid {1} -rnnlm {2} \
+    command = "./rnnlm -train {0} -valid {1} -rnnlm {2} \
    -independent -binary -bptt {3} -bptt-block {4} \
-   -direct {5} -direct-order {6} -hidden {7} -class {8}"
+   -direct {5} -direct-order {6} -hidden {7} -class {8} &> {9}.log"
     command = command.format (train_file, valid_file, rnnlm_file,
                               args.bptt, args.bptt_block, 
                               args.direct, args.direct_order,
-                              args.hidden, args.classes)
+                              args.hidden, args.classes, rnnlm_file)
     print command
     os.system (command)
     return
 
+def ReadRnnLMLog (args) :
+    logfile = args.logfile.format (args.prefix)
+    alphas = []
+    for line in open (logfile, "r") :
+        if line.startswith ("Iter:") :
+            line = re.sub (r"^.*Alpha: ", "", line.strip ())
+            alphas.append (line)
 
+    return alphas
+
+def TrainRnnLMManually (args, alphas) :
+    rnnlm_file = "{0}.m.rnnlm".format (args.prefix)
+
+    for alpha in alphas :
+        command = "./rnnlm -one-iter -train {0} -alpha {1} -rnnlm {2} \
+   -independent -binary -bptt {3} -bptt-block {4} \
+   -direct {5} -direct-order {6} -hidden {7} -class {8} &> {9}.log"
+        command = command.format (args.corpus, alpha, rnnlm_file,
+                                  args.bptt, args.bptt_block, 
+                                  args.direct, args.direct_order,
+                                  args.hidden, args.classes, rnnlm_file)
+        print command
+        os.system (command)
+    return
+    
 if __name__ == "__main__" :
     import sys, argparse
 
@@ -62,6 +86,7 @@ if __name__ == "__main__" :
     parser.add_argument ("--classes", "-nc", help="Number of classes.", default=45, type=int)
     parser.add_argument ("--hidden", "-nh", help="Number of nodes in the hidden layer.", default=110, type=int)
     parser.add_argument ("--pvalid", "-pv", help="Percent of corpus to use as validation data.", default=0.1, type=float)
+    parser.add_argument ("--logfile", "-l", help="Use an existing logfile to manually train a model.", default="{0}.rnnlm.log")
     parser.add_argument ("--verbose", "-v", help="Verbose mode.", default=False, action="store_true")
     args = parser.parse_args ()
 
@@ -69,7 +94,12 @@ if __name__ == "__main__" :
         for k,v in args.__dict__.iteritems () :
             print k, "->", v
 
+    #Splite the corpus into test/valid
     ShuffleTrainingCorpus (args.corpus, args.prefix, args.pvalid)
-
+    #Train the initial RnnLM - find the set of alpha values
     TrainRnnLM (args)
-    
+    #Extract the alpha values from the logfile
+    alphas = ReadRnnLMLog (args)
+    #Retrain the RnnLM using *all* data, manually, with the alpha vals
+    # learned in the previous step
+    TrainRnnLMManually (args, alphas) 
