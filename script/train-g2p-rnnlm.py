@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import re, random, os, sys
+import subprocess
 
 def ShuffleTrainingCorpus (ifilename, ofile_prefix, pvalid=0.1) :
     """
@@ -36,15 +37,20 @@ def TrainRnnLM (args) :
         print "Quitting because rnnlm tool will update this instead of retraining."
         print "Please choose a new prefix or delete the old rnnlm."
         sys.exit ()
-    command = "./rnnlm -train {0} -valid {1} -rnnlm {2} \
+    command = "rnnlm -train {0} -valid {1} -rnnlm {2} \
    -independent -binary -bptt {3} -bptt-block {4} \
-   -direct {5} -direct-order {6} -hidden {7} -class {8} &> {9}.log"
+   -direct {5} -direct-order {6} -hidden {7} -class {8}"
     command = command.format (train_file, valid_file, rnnlm_file,
                               args.bptt, args.bptt_block, 
                               args.direct, args.direct_order,
-                              args.hidden, args.classes, rnnlm_file)
+                              args.hidden, args.classes)
     print command
-    os.system (command)
+    parts = re.split (r"\s+", command)
+    p = subprocess.Popen ([x for x in parts], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    ofp = open (args.logfile.format (args.prefix), "w")
+    ofp.write (p.stdout.read ())
+    ofp.close ()
+
     return
 
 def ReadRnnLMLog (args) :
@@ -61,15 +67,19 @@ def TrainRnnLMManually (args, alphas) :
     rnnlm_file = "{0}.m.rnnlm".format (args.prefix)
 
     for alpha in alphas :
-        command = "./rnnlm -one-iter -train {0} -alpha {1} -rnnlm {2} \
+        command = "rnnlm -one-iter -train {0} -alpha {1} -rnnlm {2} \
    -independent -binary -bptt {3} -bptt-block {4} \
-   -direct {5} -direct-order {6} -hidden {7} -class {8} &> {9}.log"
+   -direct {5} -direct-order {6} -hidden {7} -class {8}"
         command = command.format (args.corpus, alpha, rnnlm_file,
                                   args.bptt, args.bptt_block, 
                                   args.direct, args.direct_order,
-                                  args.hidden, args.classes, rnnlm_file)
+                                  args.hidden, args.classes)
         print command
-        os.system (command)
+        parts = re.split (r"\s+", command)
+        p = subprocess.Popen ([x for x in parts], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        ofp = open ("{0}.m.rnnlm.log".format (args.prefix), "a")
+        ofp.write (p.stdout.read ())
+        ofp.close ()
     return
     
 if __name__ == "__main__" :
@@ -94,7 +104,7 @@ if __name__ == "__main__" :
         for k,v in args.__dict__.iteritems () :
             print k, "->", v
 
-    #Splite the corpus into test/valid
+    #Split the corpus into test/valid
     ShuffleTrainingCorpus (args.corpus, args.prefix, args.pvalid)
     #Train the initial RnnLM - find the set of alpha values
     TrainRnnLM (args)
