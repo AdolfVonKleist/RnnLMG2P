@@ -38,22 +38,48 @@ $ cd ..
 
 #Train up a model - probably best to use a smallish corpus to start!
 #--corpus should be an aligned joint-token corpus such as that output
-# by AltFstAligner or phonetisaurus-align.
+# by AltFstAligner or phonetisaurus-align.  m2m-aligner may also be used, 
+# but the formatting will need to be fixed. [the below is an example,
+#  which assumes that phonetisaurus-align is available, the dict is not
+#  provided in this distribution, but the examples from phonetisaurus may
+#  be used.
 $ cd script/
+$ phonetisaurus-align --intput=test.dict --ofile=test.corpus --seq1_del=false
 
 #This will train up an rnnlm with some reasonable G2P parameters
+# There are two stages to this: 
+#  1. A model is trained in the standard fashion, using 90% training data, 10% validation.
+#  2. A second model is trained using the Alpha values from the first training stage, then 
+#     this is used to manually train the model - including the validation data.
 # See --help and the example output for details.  You may need to tweak these a bit!
-$ ./train-g2p-rnnlm.py --corpus test.corpus
+$  ./train-g2p-rnnlm.py -c test.corpus -p test
+rnnlm -train test.train -valid test.valid -rnnlm test.rnnlm    -independent -binary -bptt 6 -bptt-block 10    -direct 15 -direct-order 5 -hidden 110 -class 45
+rnnlm -one-iter -train test.corpus -alpha 0.100000 -rnnlm x.m.rnnlm    -independent -binary -bptt 6 -bptt-block 10    -direct 15 -direct-order 5 -hidden 110 -class 45
+rnnlm -one-iter -train test.corpus -alpha 0.100000 -rnnlm x.m.rnnlm    -independent -binary -bptt 6 -bptt-block 10    -direct 15 -direct-order 5 -hidden 110 -class 45
+rnnlm -one-iter -train test.corpus -alpha 0.100000 -rnnlm x.m.rnnlm    -independent -binary -bptt 6 -bptt-block 10    -direct 15 -direct-order 5 -hidden 110 -class 45
+rnnlm -one-iter -train test.corpus -alpha 0.100000 -rnnlm x.m.rnnlm    -independent -binary -bptt 6 -bptt-block 10    -direct 15 -direct-order 5 -hidden 110 -class 45
+rnnlm -one-iter -train test.corpus -alpha 0.100000 -rnnlm x.m.rnnlm    -independent -binary -bptt 6 -bptt-block 10    -direct 15 -direct-order 5 -hidden 110 -class 45
+rnnlm -one-iter -train test.corpus -alpha 0.100000 -rnnlm x.m.rnnlm    -independent -binary -bptt 6 -bptt-block 10    -direct 15 -direct-order 5 -hidden 110 -class 45
+rnnlm -one-iter -train test.corpus -alpha 0.050000 -rnnlm x.m.rnnlm    -independent -binary -bptt 6 -bptt-block 10    -direct 15 -direct-order 5 -hidden 110 -class 45
+rnnlm -one-iter -train test.corpus -alpha 0.025000 -rnnlm x.m.rnnlm    -independent -binary -bptt 6 -bptt-block 10    -direct 15 -direct-order 5 -hidden 110 -class 45
+rnnlm -one-iter -train test.corpus -alpha 0.012500 -rnnlm x.m.rnnlm    -independent -binary -bptt 6 -bptt-block 10    -direct 15 -direct-order 5 -hidden 110 -class 45
+rnnlm -one-iter -train test.corpus -alpha 0.006250 -rnnlm x.m.rnnlm    -independent -binary -bptt 6 -bptt-block 10    -direct 15 -direct-order 5 -hidden 110 -class 45
 
 # Run the model with the toy corpus 
-# Provide a file instead of 'echo' if you have a file)
-$ ../phonetisaurus-g2prnn --rnnlm=test.rnnlm --test=<(echo "PERSISTANT") --nbest=5 \
-  | ./prettify.pl
-PERSISTANT P ER S IH S T AH N T	24.258
-PERSISTANT P ER S AH S T AE N T	27.4669
-PERSISTANT P ER S AH S T AA N T	27.5301
-PERSISTANT P ER S IH S AH N T 27.5923
-PERSISTANT P ER S AH S T EY N T	29.8902
+# Provide a file instead of 'echo' if you have a file) [original model]
+$ ../phonetisaurus-g2prnn --rnnlm=test.rnnlm --test=<(echo "TEST") --nbest=5 | prettify.pl
+TEST			  T EH S T	  12.0902
+TEST			  T IY S T	  17.346
+TEST			  T EY S T	  17.6871
+TEST			  T EH S 17.7112
+TEST			  T AH S T	18.8496
+# And using the retrained model (.m.rnnlm)
+$ ../phonetisaurus-g2prnn --rnnlm=test.m.rnnlm --test=<(echo "TEST") --nbest=5 | prettify.pl
+TEST				     T EH S T		     11.6143
+TEST				     T IY S T		     16.9946
+TEST				     T EY S T		     17.3594
+TEST				     T S T  17.3626
+TEST				     T AH S T	17.37
 ...
 
 #See --help for more arguments.  If running a large test set, note that the g2prnn
